@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Food Stock">
+<meta name="theme-color" content="#ffffff">
+<title>Food Stock</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --green:#639922;--green-bg:#EAF3DE;--green-text:#3B6D11;
+    --yellow:#BA7517;--yellow-bg:#FAEEDA;--yellow-text:#854F0B;
+    --orange:#D85A30;--orange-bg:#FAECE7;--orange-text:#993C1D;
+    --red:#E24B4A;--red-bg:#FCEBEB;--red-text:#A32D2D;
+    --gray:#888780;--gray-bg:#F1EFE8;--gray-text:#5F5E5A;
+    --bg:#ffffff;--bg2:#f5f5f3;--text:#1a1a18;--text2:#6b6b68;
+    --border:rgba(0,0,0,0.12);--radius:12px;--radius-sm:8px;
+  }
+  @media(prefers-color-scheme:dark){
+    :root{
+      --bg:#1a1a18;--bg2:#2c2c2a;--text:#f0efe8;--text2:#888780;
+      --border:rgba(255,255,255,0.12);
+      --green-bg:#173404;--green-text:#C0DD97;
+      --yellow-bg:#412402;--yellow-text:#FAC775;
+      --orange-bg:#4A1B0C;--orange-text:#F0997B;
+      --red-bg:#501313;--red-text:#F7C1C1;
+      --gray-bg:#2C2C2A;--gray-text:#B4B2A9;
+    }
+  }
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+  body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);overflow-x:hidden}
+  .header{padding:1.25rem 1rem 0.75rem;border-bottom:0.5px solid var(--border)}
+  .header h1{font-size:20px;font-weight:600;letter-spacing:-0.3px}
+  .header p{font-size:13px;color:var(--text2);margin-top:3px}
+  .summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0.875rem 1rem}
+  .stat{background:var(--bg2);border-radius:var(--radius-sm);padding:0.75rem;text-align:center}
+  .stat-num{font-size:26px;font-weight:600;line-height:1}
+  .stat-label{font-size:11px;color:var(--text2);margin-top:4px;line-height:1.3}
+  .stat-num.urgent{color:var(--red)}
+  .stat-num.ok{color:var(--green)}
+  .cost-row{margin:0 1rem 0.875rem;background:var(--bg2);border-radius:var(--radius-sm);padding:0.75rem 1rem;display:flex;justify-content:space-between;align-items:center}
+  .cost-row span:first-child{font-size:13px;color:var(--text2)}
+  .cost-row span:last-child{font-size:15px;font-weight:600}
+  .section-label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.07em;padding:0 1rem 6px}
+  .items{padding:0 1rem 2rem}
+  .item{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);padding:0.75rem 1rem;margin-bottom:8px;display:flex;align-items:center;gap:12px;transition:opacity 0.2s}
+  .dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+  .item-info{flex:1;min-width:0}
+  .item-name{font-size:15px;font-weight:500}
+  .item-sub{font-size:12px;color:var(--text2);margin-top:2px}
+  .badge{font-size:12px;font-weight:500;padding:4px 9px;border-radius:var(--radius-sm);white-space:nowrap;flex-shrink:0}
+  .restock{width:34px;height:34px;border-radius:50%;border:0.5px solid var(--border);background:var(--bg2);color:var(--text2);font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent}
+  .restock:active{transform:scale(0.93);background:var(--green-bg);color:var(--green-text)}
+  .status-green .dot{background:var(--green)}
+  .status-green .badge{background:var(--green-bg);color:var(--green-text)}
+  .status-yellow .dot{background:var(--yellow)}
+  .status-yellow .badge{background:var(--yellow-bg);color:var(--yellow-text)}
+  .status-orange .dot{background:var(--orange)}
+  .status-orange .badge{background:var(--orange-bg);color:var(--orange-text)}
+  .status-red .dot{background:var(--red)}
+  .status-red .badge{background:var(--red-bg);color:var(--red-text)}
+  .status-empty .dot{background:var(--gray)}
+  .status-empty .badge{background:var(--gray-bg);color:var(--gray-text)}
+  .flash{animation:flash-anim 0.4s ease}
+  @keyframes flash-anim{0%{opacity:1}40%{opacity:0.3}100%{opacity:1}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🥩 Food stock</h1>
+  <p id="last-updated">Loading...</p>
+</div>
+
+<div class="summary">
+  <div class="stat">
+    <div class="stat-num urgent" id="urgent-count">0</div>
+    <div class="stat-label">Buy soon<br>(≤3 days)</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num ok" id="ok-count">0</div>
+    <div class="stat-label">Well<br>stocked</div>
+  </div>
+</div>
+
+<div class="cost-row">
+  <span>Daily food cost</span>
+  <span>£5.52 / day</span>
+</div>
+
+<div class="section-label">Items — tap ✓ to restock</div>
+<div class="items" id="items-list"></div>
+
+<script>
+const KEY = 'foodtracker_v2';
+const ITEMS = [
+  {id:'liver',   name:'Lamb liver',       maxDays:50, cost:'£3.08 / 500g', buy:1},
+  {id:'beef',    name:'95% beef mince',   maxDays:15, cost:'£7.50 / 750g', buy:2},
+  {id:'mushroom',name:'White mushrooms',  maxDays:20, cost:'£1.95 / 625g', buy:1},
+  {id:'pollock', name:'Pollock',          maxDays:13, cost:'£2.30 / 520g', buy:5},
+  {id:'potato',  name:'Potatoes',         maxDays:20, cost:'£1.32 / 2kg',  buy:3},
+  {id:'salmon',  name:'Salmon',           maxDays:8,  cost:'£3.75 / 400g', buy:3},
+  {id:'yogurt',  name:'0% Fage yogurt',   maxDays:8,  cost:'£5.90 / 1kg',  buy:2},
+  {id:'blueberry',name:'Blueberries',     maxDays:20, cost:'£4.55 / 500g', buy:1},
+  {id:'cocoa',   name:'Cocoa powder',     maxDays:25, cost:'£3.35 / 250g', buy:1},
+];
+
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      return ITEMS.map(def => {
+        const s = saved.find(x => x.id === def.id);
+        return {...def, restockedAt: s ? s.restockedAt : Date.now()};
+      });
+    }
+  } catch(e){}
+  return ITEMS.map(i => ({...i, restockedAt: Date.now()}));
+}
+
+function save(items) {
+  try { localStorage.setItem(KEY, JSON.stringify(items.map(i => ({id:i.id,restockedAt:i.restockedAt})))); } catch(e){}
+}
+
+function daysLeft(item) {
+  return Math.max(0, item.maxDays - (Date.now() - item.restockedAt) / 86400000);
+}
+
+function status(days) {
+  if (days <= 0) return 'empty';
+  if (days <= 1) return 'red';
+  if (days <= 2) return 'orange';
+  if (days <= 3) return 'yellow';
+  return 'green';
+}
+
+function badgeText(days, st) {
+  if (st === 'empty') return 'Out of stock';
+  const d = Math.ceil(days);
+  return d === 1 ? '1 day left' : `${d} days left`;
+}
+
+let items = load();
+
+function render() {
+  const sorted = [...items].sort((a,b) => daysLeft(a) - daysLeft(b));
+  let urgent = 0, ok = 0;
+  const list = document.getElementById('items-list');
+  list.innerHTML = '';
+
+  sorted.forEach(item => {
+    const d = daysLeft(item);
+    const st = status(d);
+    if (st === 'green') ok++; else urgent++;
+
+    const el = document.createElement('div');
+    el.className = `item status-${st}`;
+    el.innerHTML = `
+      <div class="dot"></div>
+      <div class="item-info">
+        <div class="item-name">${item.name}</div>
+        <div class="item-sub">${item.cost} · buy ${item.buy} · ${item.maxDays} days</div>
+      </div>
+      <span class="badge">${badgeText(d, st)}</span>
+      <button class="restock" data-id="${item.id}" aria-label="Restock ${item.name}">✓</button>
+    `;
+    list.appendChild(el);
+  });
+
+  document.getElementById('urgent-count').textContent = urgent;
+  document.getElementById('ok-count').textContent = ok;
+
+  const now = new Date();
+  document.getElementById('last-updated').textContent =
+    'Updated ' + now.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
+
+  document.querySelectorAll('.restock').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = items.find(i => i.id === btn.dataset.id);
+      if (!item) return;
+      item.restockedAt = Date.now();
+      save(items);
+      btn.closest('.item').classList.add('flash');
+      setTimeout(render, 420);
+    });
+  });
+}
+
+render();
+setInterval(render, 60000);
+</script>
+</body>
+</html>
